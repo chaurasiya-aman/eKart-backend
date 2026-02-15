@@ -7,11 +7,13 @@ export const sendOTPMail = async (otp, user) => {
       service: "gmail",
       auth: {
         user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD,
+        pass: process.env.MAIL_APP_PASSWORD,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      rateLimit: 10,
+      connectionTimeout: 10000, 
     });
 
     const mailOptions = {

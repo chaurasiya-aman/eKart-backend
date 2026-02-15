@@ -7,41 +7,36 @@ export const sendOTPMail = async (otp, user) => {
       service: "gmail",
       auth: {
         user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD,
+        pass: process.env.MAIL_PASSWORD, 
       },
       tls: {
         rejectUnauthorized: false, 
       },
+      pool: true,               
+      maxConnections: 5,       
+      connectionTimeout: 10000, 
+      greetingTimeout: 10000,   
     });
 
-    const mailConfiguration = {
+    const mailOptions = {
       from: `"eKart Support" <${process.env.MAIL_USER}>`,
       to: user.email,
       subject: "OTP for Password Reset",
       html: `
         <p>Hello ${user.firstName},</p>
-
         <p>We received a request to reset your eKart account password.</p>
-
-        <p>
-          Your One-Time Password (OTP) is:
-          <strong style="font-size:18px;">${otp}</strong>
-        </p>
-
+        <p>Your One-Time Password (OTP) is:
+           <strong style="font-size:18px;">${otp}</strong></p>
         <p>This OTP is valid for <b>10 minutes</b>.</p>
-
         <p>If you did not request a password reset, please ignore this email.</p>
-
-        <p>
-          Thanks,<br/>
-          <b>eKart Security Team</b>
-        </p>
+        <p>Thanks,<br/><b>eKart Security Team</b></p>
       `,
     };
 
-    await transporter.sendMail(mailConfiguration);
-    console.log("OTP email sent");
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent to ${user.email}`);
   } catch (error) {
-    throw new Error(error.message);
+    console.error("Failed to send OTP email:", error);
+    throw new Error("Unable to send OTP email at the moment.");
   }
 };

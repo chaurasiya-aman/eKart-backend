@@ -1,28 +1,54 @@
+import nodemailer from "nodemailer";
 import "dotenv/config";
-import sgMail from "@sendgrid/mail";
+
+/**
+ * User registers
+        ↓
+   Token generated (jwt.sign)
+        ↓
+   verifyEmail(token, email) → EMAIL SENT
+        ↓
+   User clicks link
+        ↓
+   /api/users/verify/:token
+        ↓
+   verify controller runs
+        ↓
+   User verified in DB
+ */
 
 export const verifyEmail = async (token, user) => {
   try {
-    const msg = {
+    
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASSWORD,
+      },
+    });
+
+    const mailConfiguration = {
+      from: `"eKart Support" <${process.env.MAIL_USER}>`,
       to: user.email,
-      from: process.env.MAIL_FROM,
       subject: "Verify Your Email Address",
-      html: `
-        <p>Hello ${user.firstName},</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <p>
-          <a href="${process.env.CLIENT_URL}/verify/${token}">Verify Email</a>
-        </p>
-      `,
+      text: `Hello ${user.firstName},
+
+      Thank you for registering with eKart.
+      Please verify your email address by clicking the link below:
+      ${process.env.CLIENT_URL || "http://localhost:5173"}/verify/${token}
+      This link will expire in 10 minutes.
+      If you did not create this account, please ignore this email.
+
+      Thanks,
+      eKart Team`,
     };
 
-    await sgMail.send(msg);
-    console.log(`Verification email sent to ${user.email}`);
-  } catch (err) {
-    console.error("Failed to send verification email (ignored):", err.message || err);
-    throw new Error(err.message || "Failed to send verification email");
+    const info = await transporter.sendMail(mailConfiguration);
+    console.log("Email sent successfully");
+    console.log(info);
+  } catch (error) {
+    console.log("Error occurred in verifyEmail.js");
+    console.log(error);
   }
 };
-
-
-

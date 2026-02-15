@@ -1,13 +1,25 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 import "dotenv/config";
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export const verifyEmail = async (token, user) => {
   try {
-    const msg = {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.MAIL_USER,       
+        pass: process.env.MAIL_PASSWORD,   
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000, 
+    });
+
+    const mailOptions = {
+      from: `"eKart Support" <${process.env.MAIL_USER}>`,
       to: user.email,
-      from: process.env.EMAIL_FROM, // e.g., "no-reply@ekart.com"
       subject: "Verify Your Email Address",
       html: `
         <p>Hello ${user.firstName},</p>
@@ -33,14 +45,13 @@ export const verifyEmail = async (token, user) => {
           <b>eKart Team</b>
         </p>
       `,
+      replyTo: process.env.MAIL_USER, 
     };
 
-    // Send email asynchronously
-    sgMail.send(msg)
-      .then(() => console.log(`Verification email sent to ${user.email}`))
-      .catch((err) => console.error("Error sending verification email:", err));
-
-  } catch (error) {
-    console.error("Unexpected error in verifyEmail:", error);
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${user.email}`);
+  } catch (err) {
+    console.error("Error sending verification email:", err);
+    throw new Error(err.message || "Failed to send verification email");
   }
 };

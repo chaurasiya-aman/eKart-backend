@@ -1,54 +1,46 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import "dotenv/config";
 
-/**
- * User registers
-        ↓
-   Token generated (jwt.sign)
-        ↓
-   verifyEmail(token, email) → EMAIL SENT
-        ↓
-   User clicks link
-        ↓
-   /api/users/verify/:token
-        ↓
-   verify controller runs
-        ↓
-   User verified in DB
- */
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export const verifyEmail = async (token, user) => {
   try {
-    
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD,
-      },
-    });
-
-    const mailConfiguration = {
-      from: `"eKart Support" <${process.env.MAIL_USER}>`,
+    const msg = {
       to: user.email,
+      from: process.env.EMAIL_FROM, // e.g., "no-reply@ekart.com"
       subject: "Verify Your Email Address",
-      text: `Hello ${user.firstName},
+      html: `
+        <p>Hello ${user.firstName},</p>
 
-      Thank you for registering with eKart.
-      Please verify your email address by clicking the link below:
-      ${process.env.CLIENT_URL || "http://localhost:5173"}/verify/${token}
-      This link will expire in 10 minutes.
-      If you did not create this account, please ignore this email.
+        <p>Thank you for registering with <b>eKart</b>.</p>
 
-      Thanks,
-      eKart Team`,
+        <p>
+          Please verify your email address by clicking the link below:
+        </p>
+
+        <p>
+          <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/verify/${token}">
+            Verify Email
+          </a>
+        </p>
+
+        <p>This link will expire in <b>10 minutes</b>.</p>
+
+        <p>If you did not create this account, please ignore this email.</p>
+
+        <p>
+          Thanks,<br/>
+          <b>eKart Team</b>
+        </p>
+      `,
     };
 
-    const info = await transporter.sendMail(mailConfiguration);
-    console.log("Email sent successfully");
-    console.log(info);
+    // Send email asynchronously
+    sgMail.send(msg)
+      .then(() => console.log(`Verification email sent to ${user.email}`))
+      .catch((err) => console.error("Error sending verification email:", err));
+
   } catch (error) {
-    console.log("Error occurred in verifyEmail.js");
-    console.log(error);
+    console.error("Unexpected error in verifyEmail:", error);
   }
 };

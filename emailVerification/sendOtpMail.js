@@ -1,19 +1,13 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import "dotenv/config";
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export const sendOTPMail = async (otp, user) => {
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD,
-      },
-    });
-
-    const mailConfiguration = {
-      from: `"eKart Support" <${process.env.MAIL_USER}>`,
+    const msg = {
       to: user.email,
+      from: process.env.EMAIL_FROM, 
       subject: "OTP for Password Reset",
       html: `
         <p>Hello ${user.firstName},</p>
@@ -36,9 +30,11 @@ export const sendOTPMail = async (otp, user) => {
       `,
     };
 
-    await transporter.sendMail(mailConfiguration);
-    console.log("OTP email sent");
+    sgMail.send(msg)
+      .then(() => console.log("OTP email sent via SendGrid"))
+      .catch((err) => console.error("Error sending OTP email:", err));
+
   } catch (error) {
-    throw new Error(error.message);
+    console.error("Unexpected error in sendOTPMail:", error);
   }
 };

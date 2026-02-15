@@ -4,21 +4,18 @@ import "dotenv/config";
 export const verifyEmail = async (token, user) => {
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      host: process.env.MAIL_HOST,
+      port: Number(process.env.MAIL_PORT),
+      secure: false,
       auth: {
-        user: process.env.MAIL_USER,       
-        pass: process.env.MAIL_PASSWORD,   
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeout: 10000, 
+      connectionTimeout: 10000,
     });
 
     const mailOptions = {
-      from: `"eKart Support" <${process.env.MAIL_USER}>`,
+      from: `"eKart Support" <${process.env.MAIL_FROM}>`,
       to: user.email,
       subject: "Verify Your Email Address",
       html: `
@@ -26,9 +23,7 @@ export const verifyEmail = async (token, user) => {
 
         <p>Thank you for registering with <b>eKart</b>.</p>
 
-        <p>
-          Please verify your email address by clicking the link below:
-        </p>
+        <p>Please verify your email address by clicking the link below:</p>
 
         <p>
           <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/verify/${token}">
@@ -45,13 +40,14 @@ export const verifyEmail = async (token, user) => {
           <b>eKart Team</b>
         </p>
       `,
-      replyTo: process.env.MAIL_USER, 
+      replyTo: process.env.MAIL_FROM,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${user.email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${user.email} | Message ID: ${info.messageId}`);
+    return info;
   } catch (err) {
-    console.error("Error sending verification email:", err);
+    console.error("Failed to send verification email (ignored):", err.message || err);
     throw new Error(err.message || "Failed to send verification email");
   }
 };

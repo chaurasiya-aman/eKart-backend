@@ -4,20 +4,18 @@ import "dotenv/config";
 export const sendOTPMail = async (otp, user) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.MAIL_HOST || "smtp.sendgrid.net",
+      port: Number(process.env.MAIL_PORT) || 587,
+      secure: false,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_APP_PASSWORD,
+        user: process.env.MAIL_USER || "apikey",
+        pass: process.env.MAIL_PASS,
       },
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      rateLimit: 10,
-      connectionTimeout: 10000, 
+      connectionTimeout: 10000,
     });
 
     const mailOptions = {
-      from: `"eKart Support" <${process.env.MAIL_USER}>`,
+      from: process.env.MAIL_FROM || '"eKart Support" <no-reply@ekart.com>',
       to: user.email,
       subject: "OTP for Password Reset",
       html: `
@@ -39,11 +37,15 @@ export const sendOTPMail = async (otp, user) => {
           <b>eKart Security Team</b>
         </p>
       `,
-      replyTo: process.env.MAIL_USER,
+      replyTo: process.env.MAIL_FROM || "no-reply@ekart.com",
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`OTP email sent to ${user.email}`);
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log(
+      `OTP email sent to ${user.email} | Message ID: ${info.messageId}`,
+    );
+    return info;
   } catch (err) {
     console.error("Error sending OTP email:", err);
     throw new Error(err.message || "Failed to send OTP email");

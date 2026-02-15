@@ -4,16 +4,15 @@ import "dotenv/config";
 export const verifyEmail = async (token, user) => {
   try {
     const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       service: "gmail",
       auth: {
         user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD, 
+        pass: process.env.MAIL_PASSWORD,
       },
-      tls: { rejectUnauthorized: false }, 
-      pool: true,
-      maxConnections: 5,
-      connectionTimeout: 10000, 
-      greetingTimeout: 10000,   
+      tls: { rejectUnauthorized: false },
     });
 
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
@@ -24,15 +23,15 @@ export const verifyEmail = async (token, user) => {
       subject: "Verify Your Email Address",
       text: `Hello ${user.firstName},
 
-Thank you for registering with eKart.
-Please verify your email address by clicking the link below:
-${clientUrl}/verify/${token}
+      Thank you for registering with eKart.
+      Please verify your email address by clicking the link below:
+      ${clientUrl}/verify/${token}
 
-This link will expire in 10 minutes.
-If you did not create this account, please ignore this email.
+      This link will expire in 10 minutes.
+      If you did not create this account, please ignore this email.
 
-Thanks,
-eKart Team`,
+      Thanks,
+      eKart Team`,
     };
 
     const info = await transporter.sendMail(mailOptions);

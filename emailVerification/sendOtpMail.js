@@ -8,7 +8,7 @@ export const sendOTPMail = async (otp, user) => {
       port: Number(process.env.MAIL_PORT) || 587,
       secure: false,
       auth: {
-        user: process.env.MAIL_USER || "apikey",
+        user: process.env.MAIL_USER_KEY || "apikey",
         pass: process.env.MAIL_PASS,
       },
       connectionTimeout: 10000,
@@ -40,7 +40,6 @@ export const sendOTPMail = async (otp, user) => {
       replyTo: process.env.MAIL_FROM || "no-reply@ekart.com",
     };
 
-    // Send email
     const info = await transporter.sendMail(mailOptions);
     console.log(
       `OTP email sent to ${user.email} | Message ID: ${info.messageId}`,

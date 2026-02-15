@@ -8,7 +8,7 @@ export const verifyEmail = async (token, user) => {
       port: Number(process.env.MAIL_PORT),
       secure: false,
       auth: {
-        user: process.env.MAIL_USER,
+        user: process.env.MAIL_USER_KEY,
         pass: process.env.MAIL_PASS,
       },
       connectionTimeout: 10000,

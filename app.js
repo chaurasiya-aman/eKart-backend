@@ -1,31 +1,31 @@
 import express from "express";
 import "dotenv/config";
+import cors from "cors";
 import { mongoDB } from "./database/db.js";
 import userRoute from "./routes/user.js";
 import productRoute from "./routes/product.js";
-import cors from "cors";
+import chatRoute from "./routes/chat.js";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
-app.use( 
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 
+// Routes
+app.use("/api/v1/chat", chatRoute);
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/product", productRoute);
-
+ 
 const startServer = async () => {
-  await mongoDB();
-
-  app.listen(PORT, () => {
-    console.log(`Server listening at port ${PORT}`);
-  });
+  try {
+    await mongoDB();
+    app.listen(PORT, () => {
+      console.log(`Server listening at port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Server failed to start:", err);
+  }
 };
 
 startServer();

@@ -3,16 +3,14 @@ import { User } from "../models/user.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies.accessToken;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authorization token missing or malformed",
+        message: "Access token missing, please login",
       });
     }
-
-    const token = authHeader.split(" ")[1];
 
     let decoded;
     try {

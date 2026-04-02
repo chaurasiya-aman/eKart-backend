@@ -51,11 +51,6 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
-    isLoggedIn: {
-      type: Boolean,
-      default: false,
-    },
-
     otp: {
       type: String,
       default: null,

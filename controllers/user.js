@@ -30,7 +30,7 @@ export const register = async (req, res) => {
       });
     }
 
-    if (!password?.trim() || password.trim().length < 6) {
+    if (password.trim().length < 6) {
       return res.status(400).json({
         success: false,
         message: "Password must be at least 6 characters",
@@ -58,14 +58,16 @@ export const register = async (req, res) => {
       expiresIn: "10m",
     });
 
-    await verifyEmail(token, newUser);
-
     newUser.token = token;
     await newUser.save();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "User registered successfully",
+    });
+
+    verifyEmail(token, newUser).catch((err) => {
+      console.error("Verify Email Error:", err);
     });
   } catch (error) {
     return res.status(500).json({
@@ -148,14 +150,16 @@ export const reVerify = async (req, res) => {
       expiresIn: "10m",
     });
 
-    await verifyEmail(token, user.email);
-
     user.token = token;
     await user.save();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Verification email sent again",
+    });
+
+    verifyEmail(token, user).catch((err) => {
+      console.error("ReVerify Email Error:", err);
     });
   } catch (error) {
     return res.status(500).json({
@@ -213,6 +217,18 @@ export const login = async (req, res) => {
     await Session.deleteMany({ userId: user._id });
     await Session.create({ userId: user._id });
 
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
+      maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 20 * 24 * 60 * 60 * 1000, // 20 days
+    });
+
     return res.status(200).json({
       success: true,
       message: `Welcome back ${user.firstName}`,
@@ -233,7 +249,18 @@ export const logout = async (req, res) => {
     const userId = req.user._id;
 
     await Session.deleteMany({ userId });
-    await User.findByIdAndUpdate(userId, { isLoggedIn: false });
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
 
     return res.status(200).json({
       success: true,
@@ -250,6 +277,7 @@ export const logout = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
     if (!email?.trim()) {
       return res.status(400).json({
         success: false,
@@ -267,15 +295,19 @@ export const forgotPassword = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await user.save();
-    await sendOTPMail(otp, user);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "6 digit OTP has been sent",
+    });
+
+    sendOTPMail(otp, user).catch((err) => {
+      console.error("OTP Mail Error:", err);
     });
   } catch (error) {
     return res.status(400).json({
@@ -452,7 +484,7 @@ export const getUserById = async (req, res) => {
 export const updateUserDetails = async (req, res) => {
   try {
     const userId = req.params.id;
-    const currUser = req.user; // we will get user from isAuthenticated middleware
+    const currUser = req.user;
 
     const { firstName, lastName, about, phoneNo, address, city, zipCode } =
       req.body;
@@ -468,7 +500,7 @@ export const updateUserDetails = async (req, res) => {
       });
     }
 
-    if (!existingUser.isLoggedIn) {
+    if (!req.cookies.accessToken) {
       return res.status(400).json({
         success: false,
         message: "You must be logged in first",
@@ -496,7 +528,6 @@ export const updateUserDetails = async (req, res) => {
       });
     }
 
-    // update fields
     existingUser.firstName = firstName || existingUser.firstName;
     existingUser.lastName = lastName || existingUser.lastName;
     existingUser.zipCode = zipCode;
@@ -526,7 +557,7 @@ export const updateProfilePic = async (req, res) => {
     const userId = req.params.id;
     const loggedInUser = req.user;
 
-    if (!loggedInUser.isLoggedIn) {
+    if (!req.cookies.accessToken) {
       return res.status(400).json({
         success: false,
         message: "Please log in to update profile photo",
@@ -562,7 +593,6 @@ export const updateProfilePic = async (req, res) => {
       await cloudinary.uploader.destroy(user.profilePicPublicId);
     }
 
-    console.log(req.file);
     const cloudinaryResult = await uploadToCloudinary(
       req.file.buffer,
       "profile_pics",
@@ -570,7 +600,9 @@ export const updateProfilePic = async (req, res) => {
 
     user.profilePic = cloudinaryResult.secure_url;
     user.profilePicPublicId = cloudinaryResult.public_id;
+
     await user.save();
+
     return res.status(200).json({
       success: true,
       message: "Profile picture updated successfully",
@@ -589,7 +621,7 @@ export const deleteProfilePic = async (req, res) => {
     const userId = req.params.id;
     const loggedInUser = req.user;
 
-    if (!loggedInUser.isLoggedIn) {
+    if (!req.cookies.accessToken) {
       return res.status(400).json({
         success: false,
         message: "Please log in to update profile photo",
@@ -629,6 +661,7 @@ export const deleteProfilePic = async (req, res) => {
 
     user.profilePic = "";
     user.profilePicPublicId = "";
+
     await user.save();
 
     return res.status(200).json({

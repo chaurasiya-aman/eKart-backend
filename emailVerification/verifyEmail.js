@@ -9,13 +9,13 @@ export const verifyEmail = async (token, user) => {
 
     const msg = {
       to: user.email,
-      from: "amanchaurasiya2207@gmail.com",
+      from: "ekartsupports@gmail.com",
       subject: "Verify Your Email Address",
       text: `Hello ${user.firstName},
 
       Thank you for registering with eKart.
       Please verify your email address by clicking the link below:
-      ${clientUrl}/verify/${token}
+      ${clientUrl}/verify/${token} 
 
       This link will expire in 10 minutes.
       If you did not create this account, please ignore this email.

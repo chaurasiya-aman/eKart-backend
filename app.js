@@ -5,12 +5,14 @@ import { mongoDB } from "./database/db.js";
 import userRoute from "./routes/user.js";
 import productRoute from "./routes/product.js";
 import chatRoute from "./routes/chat.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cookieParser());
 
 // Routes
 app.use("/api/v1/chat", chatRoute);

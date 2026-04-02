@@ -7,7 +7,7 @@ export const sendOTPMail = async (otp, user) => {
   try {
     const msg = {
       to: user.email,
-      from: "amanchaurasiya2207@gmail.com",
+      from: "ekartsupports@gmail.com",
       subject: "OTP for Password Reset",
       html: `
         <p>Hello ${user.firstName},</p>
@@ -21,7 +21,7 @@ export const sendOTPMail = async (otp, user) => {
     };
 
     await sgMail.send(msg);
-    console.log(`OTP email sent to ${user.email}`);
+    console.log(`OTP email sent to ${user.email}`); 
   } catch (error) {
     console.error("SendGrid OTP Error:", error.response?.body || error.message);
     throw new Error("Unable to send OTP email at the moment.");

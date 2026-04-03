@@ -211,32 +211,31 @@ export const login = async (req, res) => {
       expiresIn: "20d",
     });
 
-    user.isLoggedIn = true;
-    await user.save();
-
     await Session.deleteMany({ userId: user._id });
     await Session.create({ userId: user._id });
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
-      sameSite: "None",
-      maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
+      maxAge: 10 * 24 * 60 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      maxAge: 20 * 24 * 60 * 60 * 1000, // 20 days
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
+      maxAge: 20 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
       success: true,
       message: `Welcome back ${user.firstName}`,
       user,
-      accessToken,
-      refreshToken,
     });
   } catch (error) {
     return res.status(500).json({
@@ -248,20 +247,24 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const isProduction = process.env.NODE_ENV === "production";
 
-    await Session.deleteMany({ userId });
+    if (req.user?._id) {
+      await Session.deleteMany({ userId: req.user._id });
+    }
 
     res.clearCookie("accessToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/", 
     });
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/", 
     });
 
     return res.status(200).json({

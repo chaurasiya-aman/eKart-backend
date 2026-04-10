@@ -4,6 +4,7 @@ import cors from "cors";
 import { mongoDB } from "./database/db.js";
 import userRoute from "./routes/user.js";
 import productRoute from "./routes/product.js";
+import cartRoute from "./routes/cart.js";
 import chatRoute from "./routes/chat.js";
 import cookieParser from "cookie-parser";
 
@@ -18,7 +19,8 @@ app.use(cookieParser());
 app.use("/api/v1/chat", chatRoute);
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/product", productRoute);
- 
+app.use("/api/v1/cart", cartRoute);
+
 const startServer = async () => {
   try {
     await mongoDB();

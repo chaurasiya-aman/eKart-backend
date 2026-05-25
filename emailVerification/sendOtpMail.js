@@ -2,30 +2,19 @@ import nodemailer from "nodemailer";
 import "dotenv/config";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
   },
-
-  connectionTimeout: 60000,
-});
-
-transporter.verify((error, success) => {
-  if (error) {
-    console.log("VERIFY ERROR:", error);
-  } else {
-    console.log("SMTP SERVER READY");
-  }
 });
 
 export const sendOTPMail = async (user, otp) => {
   try {
     const info = await transporter.sendMail({
-      from: `"eKart" <${process.env.EMAIL_USER}>`,
+      from: `"eKart" <${process.env.BREVO_SENDER}>`,
       to: user.email,
       subject: "Your OTP Code",
 

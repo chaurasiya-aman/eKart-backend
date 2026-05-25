@@ -193,7 +193,7 @@ export const login = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid password",
-      });
+      }); 
     }
 
     if (!user.isVerified) {
@@ -311,7 +311,7 @@ export const forgotPassword = async (req, res) => {
       message: "6 digit OTP has been sent",
     });
 
-    sendOTPMail(otp, user).catch((err) => {
+    sendOTPMail(user, otp).catch((err) => {
       console.error("OTP Mail Error:", err);
     });
   } catch (error) {

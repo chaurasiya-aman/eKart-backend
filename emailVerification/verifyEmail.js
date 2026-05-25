@@ -16,7 +16,7 @@ export const verifyEmail = async (token, user) => {
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
     const info = await transporter.sendMail({
-      from: `"eKart" <${process.env.EMAIL_USER}>`,
+      from: `"eKart" <${process.env.BREVO_SENDER}>`,
       to: user.email,
       subject: "Verify Your Email Address",
 
@@ -38,18 +38,17 @@ eKart Team`,
 
           <p>Thank you for registering with eKart.</p>
 
-          <p>Please verify your email address by clicking the button below:</p>
+          <p>Please verify your email address by clicking below:</p>
 
           <a 
             href="${clientUrl}/verify/${token}"
             style="
               display: inline-block;
               padding: 12px 20px;
-              background-color: #111827;
-              color: #ffffff;
+              background: #111827;
+              color: #fff;
               text-decoration: none;
               border-radius: 6px;
-              font-weight: bold;
             "
           >
             Verify Email
@@ -59,23 +58,19 @@ eKart Team`,
             This link will expire in 10 minutes.
           </p>
 
-          <p>
-            If you did not create this account, please ignore this email.
-          </p>
+          <p>If you did not create this account, ignore this email.</p>
 
-          <p>
-            Thanks,<br/>
-            eKart Team
-          </p>
+          <p>Thanks,<br/>eKart Team</p>
         </div>
       `,
     });
 
-    console.log("Verification Email Sent:", info.messageId);
+    console.log("Email sent successfully:", info.messageId);
 
     return info;
   } catch (error) {
-    console.log("SMTP Error:", error);
-    throw new Error("Unable to send verification email");
+    console.error("SMTP FULL ERROR:", error);
+
+    throw new Error(error?.message || "Unable to send verification email");
   }
 };

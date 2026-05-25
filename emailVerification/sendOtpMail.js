@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 export const sendOTPMail = async (user, otp) => {
   try {
     const info = await transporter.sendMail({
-      from: `"eKart" <${process.env.BREVO_SENDER}>`,
+      from: `"eKart" <${process.env.BREVO_USER}>`,
       to: user.email,
       subject: "Your OTP Code",
 
@@ -22,7 +22,7 @@ export const sendOTPMail = async (user, otp) => {
 
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Email Verification</h2>
+          <h2>OTP Verification</h2>
 
           <p>Your OTP code is:</p>
 
@@ -36,18 +36,11 @@ export const sendOTPMail = async (user, otp) => {
             ${otp}
           </div>
 
-          <p>
-            This OTP will expire in 5 minutes.
-          </p>
+          <p>This OTP will expire in 5 minutes.</p>
 
-          <p>
-            If you did not request this OTP, please ignore this email.
-          </p>
+          <p>If you did not request this OTP, please ignore this email.</p>
 
-          <p>
-            Thanks,<br/>
-            eKart Team
-          </p>
+          <p>Thanks,<br/>eKart Team</p>
         </div>
       `,
     });
@@ -56,8 +49,8 @@ export const sendOTPMail = async (user, otp) => {
 
     return info;
   } catch (error) {
-    console.log("SMTP Error:", error);
+    console.error("SMTP Error (OTP Mail):", error);
 
-    throw new Error("Unable to send OTP email");
+    throw new Error(error?.message || "Unable to send OTP email");
   }
 };

@@ -5,10 +5,23 @@ const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
   secure: false,
+
   auth: {
     user: process.env.BREVO_USER,
     pass: process.env.BREVO_PASS,
   },
+
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+});
+
+transporter.verify((error) => {
+  if (error) {
+    console.error("SMTP Connection Failed:", error);
+  } else {
+    console.log("SMTP Server Ready");
+  }
 });
 
 export const sendOTPMail = async (user, otp) => {
@@ -49,7 +62,7 @@ export const sendOTPMail = async (user, otp) => {
 
     return info;
   } catch (error) {
-    console.error("SMTP Error (OTP Mail):", error);
+    console.error("SMTP ERROR (OTP MAIL FULL):", error);
 
     throw new Error(error?.message || "Unable to send OTP email");
   }

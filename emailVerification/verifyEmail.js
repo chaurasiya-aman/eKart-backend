@@ -5,10 +5,23 @@ const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
   secure: false,
+
   auth: {
     user: process.env.BREVO_USER,
     pass: process.env.BREVO_PASS,
   },
+
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+});
+
+transporter.verify((error) => {
+  if (error) {
+    console.error("SMTP Connection Failed:", error);
+  } else {
+    console.log("SMTP Server Ready");
+  }
 });
 
 export const verifyEmail = async (token, user) => {
@@ -65,11 +78,11 @@ eKart Team`,
       `,
     });
 
-    console.log("Email sent successfully:", info.messageId);
+    console.log("Verification Email Sent:", info.messageId);
 
     return info;
   } catch (error) {
-    console.error("SMTP FULL ERROR:", error);
+    console.error("SMTP ERROR (FULL):", error);
 
     throw new Error(error?.message || "Unable to send verification email");
   }

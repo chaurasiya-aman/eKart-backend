@@ -109,7 +109,7 @@ export const deleteProduct = async (req, res) => {
         message: "Product not found",
       });
     }
-
+ 
     if (product.productImage && product.productImage.length > 0) {
       for (const image of product.productImage) {
         await cloudinary.uploader.destroy(image.public_id);

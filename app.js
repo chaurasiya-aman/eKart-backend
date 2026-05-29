@@ -19,7 +19,7 @@ app.use(cookieParser());
 app.use("/api/v1/chat", chatRoute);
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/product", productRoute);
-app.use("/api/v1/cart", cartRoute);
+app.use("/api/v1/cart", cartRoute); 
 
 const startServer = async () => {
   try {

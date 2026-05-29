@@ -12,3 +12,4 @@ router.put("/edit/:productId", isAuthenticated, isAdmin, multiUpload, updateProd
 router.get("/:id", getSingleProduct);
 
 export default router;
+ 

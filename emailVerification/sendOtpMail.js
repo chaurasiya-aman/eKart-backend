@@ -27,7 +27,7 @@ transporter.verify((error) => {
 export const sendOTPMail = async (user, otp) => {
   try {
     const info = await transporter.sendMail({
-      from: `"eKart" <${process.env.BREVO_USER}>`,
+      from: `"eKart" <${process.env.BREVO_SENDER}>`,
       to: user.email,
       subject: "Your OTP Code",
 

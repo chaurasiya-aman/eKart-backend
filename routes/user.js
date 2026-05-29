@@ -34,7 +34,7 @@ router.post("/verify-otp/:email", verifyOTP);
 // change password in case of forgot password
 router.put("/change-password/:email", changePassword);
  
-// // change password for logged-in user
+// // change password for logged-in user 
 // router.post("/change-password", isAuthenticated, changePassword);
 
 router.get("/get-all", isAuthenticated, isAdmin, getAllUser);

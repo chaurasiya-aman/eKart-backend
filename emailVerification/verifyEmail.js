@@ -1,35 +1,13 @@
-import nodemailer from "nodemailer";
+import createTransporter from "../config/mailer.js";
 import "dotenv/config";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
-});
-
-transporter.verify((error) => {
-  if (error) {
-    console.error("SMTP Connection Failed:", error);
-  } else {
-    console.log("SMTP Server Ready");
-  }
-});
 
 export const verifyEmail = async (token, user) => {
   try {
+    const transporter = await createTransporter();
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
     const info = await transporter.sendMail({
-      from: `"eKart" <${process.env.BREVO_SENDER}>`,
+      from: `"eKart" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: "Verify Your Email Address",
 
@@ -67,9 +45,7 @@ eKart Team`,
             Verify Email
           </a>
 
-          <p style="margin-top: 20px;">
-            This link will expire in 10 minutes.
-          </p>
+          <p style="margin-top: 20px;">This link will expire in 10 minutes.</p>
 
           <p>If you did not create this account, ignore this email.</p>
 
@@ -79,11 +55,9 @@ eKart Team`,
     });
 
     console.log("Verification Email Sent:", info.messageId);
-
     return info;
   } catch (error) {
     console.error("SMTP ERROR (FULL):", error);
-
     throw new Error(error?.message || "Unable to send verification email");
   }
 };

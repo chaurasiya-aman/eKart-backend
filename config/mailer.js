@@ -1,17 +1,9 @@
-import nodemailer from "nodemailer";
 import { google } from "googleapis";
 import "dotenv/config";
 
 const OAuth2 = google.auth.OAuth2;
 
-const createTransporter = async () => {
-  console.log("ENV CHECK:", {
-    user: process.env.EMAIL_USER,
-    clientId: process.env.GMAIL_CLIENT_ID ? "✅ loaded" : "❌ missing",
-    clientSecret: process.env.GMAIL_CLIENT_SECRET ? "✅ loaded" : "❌ missing",
-    refreshToken: process.env.GMAIL_REFRESH_TOKEN ? "✅ loaded" : "❌ missing",
-  });
-
+const sendMail = async ({ to, subject, text, html }) => {
   const oauth2Client = new OAuth2(
     process.env.GMAIL_CLIENT_ID,
     process.env.GMAIL_CLIENT_SECRET,
@@ -22,25 +14,32 @@ const createTransporter = async () => {
     refresh_token: process.env.GMAIL_REFRESH_TOKEN,
   });
 
-  try {
-    const accessToken = await oauth2Client.getAccessToken();
-    console.log("Access Token:", accessToken.token ? "✅ generated" : "❌ failed");
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: process.env.EMAIL_USER,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
-        refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-        accessToken: accessToken.token,
-      },
-    });
-  } catch (err) {
-    console.error("OAuth2 Error:", err.message);
-    throw new Error("Failed to create email transporter: " + err.message);
-  }
+  const messageParts = [
+    `From: "eKart" <${process.env.EMAIL_USER}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    ``,
+    html || text,
+  ];
+
+  const message = messageParts.join("\n");
+  const encodedMessage = Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  const res = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw: encodedMessage },
+  });
+
+  console.log("Email sent via Gmail API:", res.data.id);
+  return res.data;
 };
 
-export default createTransporter;
+export default sendMail;

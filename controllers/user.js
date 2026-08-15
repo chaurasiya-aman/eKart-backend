@@ -122,16 +122,20 @@ export const verify = async (req, res) => {
 export const reVerify = async (req, res) => {
   try {
     const { email } = req.body;
-
+    
     if (!email?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Email is required",
       });
     }
-
+    
     const user = await User.findOne({ email });
-
+    
+    console.log("Email:", email);
+    console.log("User:", user);
+    console.log("isVerified:", user?.isVerified);
+    
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -193,7 +197,7 @@ export const login = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid password",
-      }); 
+      });
     }
 
     if (!user.isVerified) {
@@ -257,14 +261,14 @@ export const logout = async (req, res) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      path: "/", 
+      path: "/",
     });
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      path: "/", 
+      path: "/",
     });
 
     return res.status(200).json({

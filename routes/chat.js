@@ -21,6 +21,10 @@ router.post(
     const trimmedPrompt = prompt.trim();
 
     try {
+      console.log("====================================");
+      console.log("1. Chat request received");
+      console.log("Prompt:", trimmedPrompt);
+
       const fullContext = [
         ...conversationHistory.map(
           (m) => m.content
@@ -28,17 +32,48 @@ router.post(
         trimmedPrompt,
       ].join(" ");
 
+      console.log("2. Full context created");
+
       let filteredProducts = [];
 
-      if (isShoppingQuery(trimmedPrompt)) {
+      const shoppingQuery =
+        isShoppingQuery(trimmedPrompt);
+
+      console.log(
+        "3. Is shopping query:",
+        shoppingQuery
+      );
+
+      if (shoppingQuery) {
+        console.log("4. Fetching products from MongoDB...");
+
         const allProducts =
           await Product.find().lean();
+
+        console.log(
+          "5. Products fetched:",
+          allProducts.length
+        );
+
+        console.log("6. Filtering products...");
 
         filteredProducts = filterProducts(
           allProducts,
           trimmedPrompt
         );
+
+        console.log(
+          "7. Products after filtering:",
+          filteredProducts.length
+        );
+
+        console.log(
+          "Filtered products:",
+          filteredProducts
+        );
       }
+
+      console.log("8. Calling AI service...");
 
       const aiReply = await getAIResponse(
         trimmedPrompt,
@@ -46,14 +81,29 @@ router.post(
         conversationHistory
       );
 
+      console.log("9. AI response received");
+      console.log("AI reply:", aiReply);
+
+      console.log("10. Sending response to frontend");
+
       return res.json({
         success: true,
         reply: aiReply,
         products: filteredProducts,
       });
+
     } catch (error) {
       console.error(
+        "===================================="
+      );
+
+      console.error(
         "Chat route error:",
+        error
+      );
+
+      console.error(
+        "Error message:",
         error.message
       );
 

@@ -182,3 +182,24 @@ export const removeCartItem = async (req, res) => {
   }
 };
  
+
+export const clearCart = async (req, res) => {
+  try {
+    const cart = await Cart.findOneAndUpdate(
+      { user: req.user._id },
+      { $set: { items: [], totalPrice: 0 } },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Cart cleared",
+      cart,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to clear cart",
+    });
+  }
+};

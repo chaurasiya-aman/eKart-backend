@@ -1,4 +1,4 @@
-import axios from "axios";
+import Groq from "groq-sdk";
 import { AI_CONFIG } from "./constants.js";
 
 const buildHistoryString = (messages = []) => {
@@ -45,6 +45,22 @@ Customer: ${prompt}
 Nova:`.trim();
 };
 
+let groqClient;
+
+const getGroqClient = () => {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    const error = new Error("GROQ_API_KEY is not configured");
+    error.code = "AI_CONFIGURATION_ERROR";
+    throw error;
+  }
+
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey });
+  }
+  return groqClient;
+};
+
 export const getAIResponse = async (
   prompt,
   products = [],
@@ -54,35 +70,39 @@ export const getAIResponse = async (
   const userPrompt = buildUserPrompt(prompt, products, history);
 
   try {
-    const response = await axios.post(
-      "https://integrate.api.nvidia.com/v1/chat/completions",
-      {
-        model: AI_CONFIG.model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are Nova, a friendly and natural-sounding store assistant. Never repeat product names or prices unless needed. Keep replies under 3 sentences. Sound human, not robotic.",
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        temperature: AI_CONFIG.temperature, 
-        max_tokens: AI_CONFIG.max_tokens,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
-          "Content-Type": "application/json",
+    const response = await getGroqClient().chat.completions.create({
+      model: AI_CONFIG.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are Nova, a friendly and natural-sounding store assistant. Never repeat product names or prices unless needed. Keep replies under 3 sentences. Sound human, not robotic.",
         },
-      }
-    );
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+      temperature: AI_CONFIG.temperature,
+      max_completion_tokens: AI_CONFIG.max_tokens,
+      reasoning_effort: "low",
+      include_reasoning: false,
+    });
 
-    return response.data.choices[0].message.content.trim();
+    const content = response.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || !content.trim()) {
+      throw new Error("Groq returned an empty response");
+    }
+    return content.trim();
   } catch (error) {
-    console.error("AI API Error:", error.response?.data || error.message);
+    if (error.code === "AI_CONFIGURATION_ERROR") {
+      throw error;
+    }
+
+    console.error("Groq API request failed:", {
+      status: error.status,
+      code: error.code,
+    });
     throw new Error("AI service unavailable");
   }
 };

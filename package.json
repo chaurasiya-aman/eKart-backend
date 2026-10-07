@@ -10,9 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@sendgrid/mail": "^8.1.6",
-    "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
@@ -20,6 +18,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "googleapis": "^173.0.0",
+    "groq-sdk": "^1.6.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.4",
     "multer": "^2.0.2",

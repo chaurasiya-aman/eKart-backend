@@ -52,6 +52,13 @@ router.post(
     } catch (error) {
       console.error("Chat route error:", error.message);
 
+      if (error.code === "AI_CONFIGURATION_ERROR") {
+        return res.status(503).json({
+          success: false,
+          error: "AI assistant is not configured. Set GROQ_API_KEY in the backend environment.",
+        });
+      }
+
       if (
         error.message ===
         "AI service unavailable"

@@ -9,7 +9,8 @@ const mongoDB = async () => {
     console.log(
       "Error in db.js************************************************",
     );
-    console.log(error);
+    console.error("Database connection failed:", error.message);
+    throw error;
   }
 };
 

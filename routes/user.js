@@ -38,7 +38,7 @@ router.put("/change-password/:email", changePassword);
 // router.post("/change-password", isAuthenticated, changePassword);
 
 router.get("/get-all", isAuthenticated, isAdmin, getAllUser);
-router.get("/get-user/:userId", getUserById);
+router.get("/get-user/:userId", isAuthenticated, getUserById);
 
 // update profile route
 router.put("/profile/:id", isAuthenticated, updateUserDetails);

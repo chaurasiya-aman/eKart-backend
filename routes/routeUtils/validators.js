@@ -23,11 +23,19 @@ export const validateChatRequest = (req, res, next) => {
       });
     }
 
+    if (conversationHistory.length > 20) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationHistory must contain 20 messages or fewer.",
+      });
+    }
+
     const isValid = conversationHistory.every(
       (msg) =>
         msg &&
         typeof msg === "object" &&
         typeof msg.content === "string" &&
+        msg.content.length <= 5000 &&
         ["user", "assistant"].includes(msg.role)
     );
 
@@ -35,7 +43,7 @@ export const validateChatRequest = (req, res, next) => {
       return res.status(400).json({
         success: false,
         error:
-          "Each message in conversationHistory must have a role ('user' or 'assistant') and a content string.",
+          "Each history message must have a valid role and content of at most 5000 characters.",
       });
     }
   }

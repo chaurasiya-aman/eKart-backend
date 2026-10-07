@@ -101,22 +101,22 @@ export const deleteProduct = async (req, res) => {
   try {
     const { productId } = req.params;
 
-    const product = await Product.find({ _id: productId });
+    const product = await Product.findById(productId);
 
     if (!product) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: "Product not found",
       });
     }
  
-    if (product.productImage && product.productImage.length > 0) {
-      for (const image of product.productImage) {
-        await cloudinary.uploader.destroy(image.public_id);
-      }
-    }
-
     await Product.findByIdAndDelete(productId);
+
+    if (product.productImage?.length) {
+      await Promise.allSettled(
+        product.productImage.map((image) => cloudinary.uploader.destroy(image.public_id)),
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -163,15 +163,8 @@ export const updateProduct = async (req, res) => {
       product.productPrice = priceNumber;
     }
 
+    let oldImages = [];
     if (req.files && req.files.length > 0) {
-      if (product.productImage?.length > 0) {
-        await Promise.all(
-          product.productImage.map((img) =>
-            cloudinary.uploader.destroy(img.public_id),
-          ),
-        );
-      }
-
       const uploadedImages = await Promise.all(
         req.files.map(async (file) => {
           const result = await uploadToCloudinary(file.buffer);
@@ -182,10 +175,17 @@ export const updateProduct = async (req, res) => {
         }),
       );
 
+      oldImages = product.productImage || [];
       product.productImage = uploadedImages;
     }
 
     await product.save();
+
+    if (oldImages.length) {
+      await Promise.allSettled(
+        oldImages.map((img) => cloudinary.uploader.destroy(img.public_id)),
+      );
+    }
 
     return res.status(200).json({
       success: true,

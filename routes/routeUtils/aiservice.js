@@ -69,7 +69,7 @@ export const getAIResponse = async (
             content: userPrompt,
           },
         ],
-        temperature: AI_CONFIG.temperature,
+        temperature: AI_CONFIG.temperature, 
         max_tokens: AI_CONFIG.max_tokens,
       },
       {

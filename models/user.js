@@ -66,6 +66,21 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    otpRequestedAt: {
+      type: Date,
+      default: null,
+    },
+
+    otpAttempts: {
+      type: Number,
+      default: 0,
+    },
+
+    otpVerifiedExpiry: {
+      type: Date,
+      default: null,
+    },
+
     address: {
       type: String,
     },

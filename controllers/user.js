@@ -6,15 +6,30 @@ import { Session } from "../models/sessionSchema.js";
 import { sendOTPMail } from "../emailVerification/sendOtpMail.js";
 import { uploadToCloudinary } from "../utils/UploadImage.js";
 import cloudinary from "../utils/cloudinary.js";
+import { randomInt } from "node:crypto";
+
+const toSafeUser = (user) => {
+  const safeUser = user.toObject ? user.toObject() : { ...user };
+  for (const field of ["password", "otp", "otpExpiry", "otpRequestedAt", "otpAttempts", "otpVerifiedExpiry", "token"]) {
+    delete safeUser[field];
+  }
+  return safeUser;
+};
+
+const PASSWORD_RESET_OTP_TTL_MS = 5 * 60 * 1000;
+const PASSWORD_RESET_VERIFICATION_TTL_MS = 10 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
 
 export const register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (
       !firstName?.trim() ||
       !lastName?.trim() ||
-      !email?.trim() ||
+      !email ||
       !password?.trim()
     ) {
       return res.status(400).json({
@@ -121,9 +136,9 @@ export const verify = async (req, res) => {
 
 export const reVerify = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
     
-    if (!email?.trim()) {
+    if (!email) {
       return res.status(400).json({
         success: false,
         message: "Email is required",
@@ -131,10 +146,6 @@ export const reVerify = async (req, res) => {
     }
     
     const user = await User.findOne({ email });
-    
-    console.log("Email:", email);
-    console.log("User:", user);
-    console.log("isVerified:", user?.isVerified);
     
     if (!user) {
       return res.status(400).json({
@@ -175,9 +186,10 @@ export const reVerify = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
-    if (!email?.trim() || !password?.trim()) {
+    if (!email || !password?.trim()) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -186,17 +198,17 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
-        message: "User does not exist",
+        message: "No account is registered with this email. Please sign up first.",
       });
     }
 
     const isPassValid = await bcrypt.compare(password, user.password);
     if (!isPassValid) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
-        message: "Invalid password",
+        message: "Incorrect password. Please try again.",
       });
     }
 
@@ -207,16 +219,19 @@ export const login = async (req, res) => {
       });
     }
 
-    const accessToken = jwt.sign({ id: user._id }, process.env.SECRET_KEY, {
-      expiresIn: "10d",
-    });
-
-    const refreshToken = jwt.sign({ id: user._id }, process.env.SECRET_KEY, {
-      expiresIn: "20d",
-    });
+    const accessTokenExpirySeconds = 10 * 24 * 60 * 60;
+    const refreshTokenExpirySeconds = 20 * 24 * 60 * 60;
 
     await Session.deleteMany({ userId: user._id });
-    await Session.create({ userId: user._id });
+    const session = await Session.create({ userId: user._id });
+
+    const accessToken = jwt.sign({ id: user._id, sid: session._id }, process.env.SECRET_KEY, {
+      expiresIn: accessTokenExpirySeconds,
+    });
+
+    const refreshToken = jwt.sign({ id: user._id, sid: session._id }, process.env.SECRET_KEY, {
+      expiresIn: refreshTokenExpirySeconds,
+    });
 
     const isProduction = process.env.NODE_ENV === "production";
 
@@ -225,7 +240,7 @@ export const login = async (req, res) => {
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       path: "/",
-      maxAge: 10 * 24 * 60 * 60 * 1000,
+      maxAge: accessTokenExpirySeconds * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -233,13 +248,13 @@ export const login = async (req, res) => {
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       path: "/",
-      maxAge: 20 * 24 * 60 * 60 * 1000,
+      maxAge: refreshTokenExpirySeconds * 1000,
     });
 
     return res.status(200).json({
       success: true,
       message: `Welcome back ${user.firstName}`,
-      user,
+      user: toSafeUser(user),
     });
   } catch (error) {
     return res.status(500).json({
@@ -285,9 +300,9 @@ export const logout = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
-    if (!email?.trim()) {
+    if (!email) {
       return res.status(400).json({
         success: false,
         message: "Email is required",
@@ -295,28 +310,32 @@ export const forgotPassword = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
+    if (user) {
+      const now = Date.now();
+      if (user.otpRequestedAt && now - user.otpRequestedAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
+        return res.status(200).json({
+          success: true,
+          message: "If the account exists, a reset code will be sent",
+        });
+      }
 
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "User not found",
+      const otp = randomInt(0, 1_000_000).toString().padStart(6, "0");
+      user.otp = await bcrypt.hash(otp, 10);
+      user.otpExpiry = new Date(now + PASSWORD_RESET_OTP_TTL_MS);
+      user.otpRequestedAt = new Date(now);
+      user.otpAttempts = 0;
+      user.isOtpVerified = false;
+      user.otpVerifiedExpiry = null;
+      await user.save();
+
+      sendOTPMail(user, otp).catch((err) => {
+        console.error("OTP Mail Error:", err.message);
       });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    await user.save();
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "6 digit OTP has been sent",
-    });
-
-    sendOTPMail(user, otp).catch((err) => {
-      console.error("OTP Mail Error:", err);
+      message: "If the account exists, a reset code will be sent",
     });
   } catch (error) {
     return res.status(400).json({
@@ -329,9 +348,9 @@ export const forgotPassword = async (req, res) => {
 export const verifyOTP = async (req, res) => {
   try {
     const { otp } = req.body;
-    const { email } = req.params;
+    const email = req.params.email?.trim().toLowerCase();
 
-    if (!otp?.trim() || !email?.trim()) {
+    if (!/^\d{6}$/.test(otp || "") || !email) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -348,13 +367,30 @@ export const verifyOTP = async (req, res) => {
     }
 
     if (user.otpExpiry < new Date()) {
+      user.otp = null;
+      user.otpExpiry = null;
+      user.otpAttempts = 0;
+      await user.save();
       return res.status(400).json({
         success: false,
         message: "OTP expired",
       });
     }
 
-    if (otp !== user.otp) {
+    if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many invalid attempts. Request a new code.",
+      });
+    }
+
+    if (!(await bcrypt.compare(otp, user.otp))) {
+      user.otpAttempts += 1;
+      if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+        user.otp = null;
+        user.otpExpiry = null;
+      }
+      await user.save();
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
@@ -363,7 +399,9 @@ export const verifyOTP = async (req, res) => {
 
     user.otp = null;
     user.otpExpiry = null;
+    user.otpAttempts = 0;
     user.isOtpVerified = true;
+    user.otpVerifiedExpiry = new Date(Date.now() + PASSWORD_RESET_VERIFICATION_TTL_MS);
 
     await user.save();
 
@@ -382,7 +420,7 @@ export const verifyOTP = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const { newPassword, confirmPassword } = req.body;
-    const { email } = req.params;
+    const email = req.params.email?.trim().toLowerCase();
 
     if (!newPassword?.trim() || !confirmPassword?.trim()) {
       return res.status(400).json({
@@ -413,11 +451,15 @@ export const changePassword = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "User not found",
+        message: "Invalid or expired reset request",
       });
     }
 
-    if (!user.isOtpVerified) {
+    if (
+      !user.isOtpVerified ||
+      !user.otpVerifiedExpiry ||
+      user.otpVerifiedExpiry < new Date()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Please verify OTP first",
@@ -427,8 +469,10 @@ export const changePassword = async (req, res) => {
     user.password = await bcrypt.hash(trimmedPassword, 10);
 
     user.isOtpVerified = false;
+    user.otpVerifiedExpiry = null;
 
     await user.save();
+    await Session.deleteMany({ userId: user._id });
 
     return res.status(200).json({
       success: true,
@@ -452,7 +496,9 @@ export const getAllUser = async (req, res) => {
       });
     }
 
-    const users = await User.find({});
+    const users = await User.find({})
+      .select("-password -otp -otpExpiry -otpRequestedAt -otpAttempts -otpVerifiedExpiry -token -isOtpVerified")
+      .lean();
     return res.status(200).json({
       success: true,
       users,
@@ -468,8 +514,15 @@ export const getAllUser = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById({ _id: userId }).select(
-      "-otp -password -otpExpiry -token -isOtpVerified",
+    if (req.user._id.toString() !== userId && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have access to view this profile",
+      });
+    }
+
+    const user = await User.findById(userId).select(
+      "-otp -password -otpExpiry -otpRequestedAt -otpAttempts -otpVerifiedExpiry -token -isOtpVerified",
     );
     if (!user) {
       return res.status(400).json({
@@ -499,7 +552,7 @@ export const updateUserDetails = async (req, res) => {
       req.body;
 
     const existingUser = await User.findOne({ _id: userId }).select(
-      "-password -token -otp -isOtpVerified ",
+      "-password -token -otp -otpExpiry -otpRequestedAt -otpAttempts -otpVerifiedExpiry -isOtpVerified",
     );
 
     if (!existingUser) {
@@ -553,7 +606,7 @@ export const updateUserDetails = async (req, res) => {
       user: existingUser,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Profile update error:", error.message);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -598,19 +651,22 @@ export const updateProfilePic = async (req, res) => {
       });
     }
 
-    if (user.profilePicPublicId) {
-      await cloudinary.uploader.destroy(user.profilePicPublicId);
-    }
-
     const cloudinaryResult = await uploadToCloudinary(
       req.file.buffer,
       "profile_pics",
     );
 
+    const previousProfilePicPublicId = user.profilePicPublicId;
     user.profilePic = cloudinaryResult.secure_url;
     user.profilePicPublicId = cloudinaryResult.public_id;
 
     await user.save();
+
+    if (previousProfilePicPublicId) {
+      await cloudinary.uploader.destroy(previousProfilePicPublicId).catch((error) => {
+        console.error("Previous profile image cleanup failed:", error.message);
+      });
+    }
 
     return res.status(200).json({
       success: true,

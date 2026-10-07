@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
+import { Session } from "../models/sessionSchema.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
@@ -34,6 +35,13 @@ export const isAuthenticated = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    if (!decoded.sid || !(await Session.exists({ _id: decoded.sid, userId: user._id }))) {
+      return res.status(401).json({
+        success: false,
+        message: "Session has expired, please login again",
       });
     }
 

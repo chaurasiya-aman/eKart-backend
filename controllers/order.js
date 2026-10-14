@@ -16,7 +16,20 @@ export const createDemoOrder = async (req, res) => {
     if (!DEMO_PAYMENT_METHODS.has(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: "Choose a valid demo payment method",
+        message: "Choose a valid payment method",
+      });
+    }
+
+    const requiredAddressFields = [
+      req.user.address,
+      req.user.city,
+      req.user.zipCode,
+      req.user.phoneNo,
+    ];
+    if (requiredAddressFields.some((value) => !value?.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Add your address, city, postal code, and phone number before placing an order",
       });
     }
 
@@ -48,7 +61,7 @@ export const createDemoOrder = async (req, res) => {
 
     const order = await Order.create({
       user: req.user._id,
-      orderNumber: `DEMO-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`,
+      orderNumber: `ORD-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`,
       items: orderItems,
       shippingAddress: {
         name: [req.user.firstName, req.user.lastName].filter(Boolean).join(" "),
@@ -72,13 +85,13 @@ export const createDemoOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Demo order placed",
+      message: "Order placed",
       order,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message || "Could not place the demo order",
+      message: error.message || "Could not place the order",
     });
   }
 };

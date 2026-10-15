@@ -20,16 +20,18 @@ export const createDemoOrder = async (req, res) => {
       });
     }
 
-    const requiredAddressFields = [
+    const requiredCustomerFields = [
+      req.user.firstName,
+      req.user.lastName,
       req.user.address,
       req.user.city,
       req.user.zipCode,
       req.user.phoneNo,
     ];
-    if (requiredAddressFields.some((value) => !value?.trim())) {
+    if (requiredCustomerFields.some((value) => !value?.trim())) {
       return res.status(400).json({
         success: false,
-        message: "Add your address, city, postal code, and phone number before placing an order",
+        message: "Add your full name, phone number, street address, city, and postal code before placing an order",
       });
     }
 
